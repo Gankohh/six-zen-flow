@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, RotateCcw } from "lucide-react";
+import { Play, RotateCcw, Volume2, VolumeX, Music } from "lucide-react";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { useAmbientSound } from "@/hooks/useAmbientSound";
 
 type MeditationState = "idle" | "meditating" | "complete";
 
@@ -49,6 +51,9 @@ const Index = () => {
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [elapsedInPhase, setElapsedInPhase] = useState(0);
   const [totalElapsed, setTotalElapsed] = useState(0);
+  
+  const { speak, cancel, toggle: toggleVoice, isEnabled: isVoiceEnabled } = useTextToSpeech();
+  const { toggle: toggleAmbient, isEnabled: isAmbientEnabled } = useAmbientSound();
 
   const currentPhase = phases[currentPhaseIndex];
   const totalDuration = phases.reduce((sum, phase) => sum + phase.duration, 0);
@@ -66,12 +71,20 @@ const Index = () => {
           setElapsedInPhase(0);
         } else {
           setState("complete");
+          cancel();
         }
       }
     }, 1000);
 
     return () => clearInterval(interval);
   }, [state, elapsedInPhase, currentPhaseIndex, currentPhase.duration]);
+
+  // Speak guidance when phase changes
+  useEffect(() => {
+    if (state === "meditating" && elapsedInPhase === 0) {
+      speak(currentPhase.guidance);
+    }
+  }, [currentPhaseIndex, state]);
 
   const startMeditation = () => {
     setState("meditating");
@@ -85,6 +98,7 @@ const Index = () => {
     setCurrentPhaseIndex(0);
     setElapsedInPhase(0);
     setTotalElapsed(0);
+    cancel();
   };
 
   const formatTime = (seconds: number) => {
@@ -184,6 +198,30 @@ const Index = () => {
         {currentPhase.visualType === "fade-out" && (
           <div className="w-96 h-96 rounded-full bg-white/5 blur-3xl opacity-30" />
         )}
+      </div>
+
+      {/* Audio Controls */}
+      <div className="absolute top-6 right-6 z-20 flex gap-3">
+        <Button
+          onClick={toggleVoice}
+          size="icon"
+          variant="ghost"
+          className="h-12 w-12 rounded-full bg-background/10 hover:bg-background/20 border border-border/30"
+        >
+          {isVoiceEnabled ? (
+            <Volume2 className="h-5 w-5" />
+          ) : (
+            <VolumeX className="h-5 w-5" />
+          )}
+        </Button>
+        <Button
+          onClick={toggleAmbient}
+          size="icon"
+          variant="ghost"
+          className="h-12 w-12 rounded-full bg-background/10 hover:bg-background/20 border border-border/30"
+        >
+          <Music className={`h-5 w-5 ${isAmbientEnabled ? "" : "opacity-40"}`} />
+        </Button>
       </div>
 
       {/* Content */}
